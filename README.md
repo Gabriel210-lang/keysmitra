@@ -1,5 +1,5 @@
 --[[
-    Mitra Menu - Sistema de Key e Logs
+    Mitra Menu O melhor menu - Sistema de Key e Logs
     Sistema de autenticação e logging
 ]]
 
