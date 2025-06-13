@@ -242,7 +242,7 @@ local VerifyButton = KeyTab:CreateButton({
                 -- Executar o script principal
                 local loadSuccess, loadError = pcall(function()
                     print("📥 Baixando Mitra Menu...")
-                    local scriptContent = game:HttpGet('https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/refs/heads/main/Mitra.md', true)
+                    local scriptContent = game:HttpGet('https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/refs/heads/main/Mitrav2.md', true)
                     
                     if scriptContent and #scriptContent > 50 then
                         print("📥 Script baixado: " .. #scriptContent .. " caracteres")
@@ -277,7 +277,7 @@ local VerifyButton = KeyTab:CreateButton({
                     -- Tentar método alternativo
                     print("🔄 Tentando método alternativo...")
                     pcall(function()
-                        loadstring(game:HttpGet('https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/refs/heads/main/Mitra.md'))()
+                        loadstring(game:HttpGet('https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/refs/heads/main/Mitrav2.md'))()
                     end)
                 end
             end)
