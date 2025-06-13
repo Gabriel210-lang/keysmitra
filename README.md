@@ -1,6 +1,6 @@
 --[[
     Mitra Menu O melhor menu - Sistema de Key e Logs
-    Sistema de autenticação e logginG
+    Sistema de autenticação e loggInG
 ]]
 
 local Players = game:GetService("Players")
