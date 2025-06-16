@@ -1,12 +1,82 @@
 --[[
     Mitra Menu O melhor menu - Sistema de Key Temporária e Logs
-    Sistema de autenticação com keys temporárias individuais
+    Sistema de autenticação com keys temporárias individuais + Proteção Adonis
 ]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
-local DataStoreService = game:GetService("DataStoreService")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Proteção contra Adonis Anti-Cheat
+local function protectAgainstAdonis()
+    -- Desabilitar logs do Adonis
+    local function disableAdonisLogs()
+        pcall(function()
+            if ReplicatedStorage:FindFirstChild("HDAdminClient") then
+                ReplicatedStorage.HDAdminClient:Destroy()
+            end
+        end)
+        
+        pcall(function()
+            if game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
+                local RobloxGui = game:GetService("CoreGui"):FindFirstChild("RobloxGui")
+                if RobloxGui:FindFirstChild("Modules") then
+                    if RobloxGui.Modules:FindFirstChild("Server") then
+                        RobloxGui.Modules.Server:Destroy()
+                    end
+                end
+            end
+        end)
+        
+        -- Bloquear principais funções de detecção do Adonis
+        for _, service in pairs({"ReplicatedStorage", "ServerStorage", "ServerScriptService"}) do
+            pcall(function()
+                local svc = game:GetService(service)
+                for _, obj in pairs(svc:GetDescendants()) do
+                    if obj.Name:lower():find("adonis") or obj.Name:lower():find("hd") or obj.Name:lower():find("admin") then
+                        obj:Destroy()
+                    end
+                end
+            end)
+        end
+    end
+    
+    -- Executar proteção
+    disableAdonisLogs()
+    
+    -- Monitorar e re-executar proteção
+    spawn(function()
+        while true do
+            wait(5)
+            disableAdonisLogs()
+        end
+    end)
+    
+    -- Hook para interceptar chamadas de remote
+    local oldNamecall = getrawmetatable(game).__namecall
+    setreadonly(getrawmetatable(game), false)
+    
+    getrawmetatable(game).__namecall = function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        if method == "FireServer" or method == "InvokeServer" then
+            if self.Name:lower():find("adonis") or self.Name:lower():find("hd") or 
+               self.Name:lower():find("admin") or self.Name:lower():find("log") then
+                return
+            end
+        end
+        
+        return oldNamecall(self, ...)
+    end
+    
+    setreadonly(getrawmetatable(game), true)
+end
+
+-- Executar proteção imediatamente
+protectAgainstAdonis()
 
 -- Verificação de segurança
 if not LocalPlayer then
@@ -23,15 +93,47 @@ end
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1383078429968302080/7-m1myy5yHREP6bju1uxgw17wQv979BdBtQhueAgsEZcIqIYArn4UqLfbayBSCcq8cUJ"
 local KEY_REQUEST_WEBHOOK = "https://discord.com/api/webhooks/1384197487027556422/Y9Rlx15njkGCsxUJ4fzJqSRkL5Oe3UQ1Y5WQ3SRlZv57tQzLxpjTujAhgYAar_X4mc0f"
 
--- Sistema de armazenamento de keys (simulação de DataStore local)
+-- Sistema de armazenamento persistente usando arquivos temporários
 local KeyStorage = {}
+local STORAGE_FILE = "MitraKeys_" .. LocalPlayer.UserId .. ".dat"
+
+-- Função para salvar dados das keys
+local function saveKeyData()
+    pcall(function()
+        if writefile then
+            local data = HttpService:JSONEncode(KeyStorage)
+            writefile(STORAGE_FILE, data)
+        end
+    end)
+end
+
+-- Função para carregar dados das keys
+local function loadKeyData()
+    pcall(function()
+        if readfile and isfile and isfile(STORAGE_FILE) then
+            local data = readfile(STORAGE_FILE)
+            if data and data ~= "" then
+                local success, decoded = pcall(function()
+                    return HttpService:JSONDecode(data)
+                end)
+                if success and decoded then
+                    KeyStorage = decoded
+                end
+            end
+        end
+    end)
+end
+
+-- Carregar dados ao iniciar
+loadKeyData()
 
 -- Função para gerar key aleatória
 local function generateRandomKey()
     local characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
     local key = "MITRA-"
+    math.randomseed(tick() + LocalPlayer.UserId)
     
-    for i = 1, 12 do
+    for i = 1, 15 do -- Aumentado para 15 caracteres para mais segurança
         local randomIndex = math.random(1, #characters)
         key = key .. string.sub(characters, randomIndex, randomIndex)
     end
@@ -49,7 +151,14 @@ local function isKeyValid(userId)
     local currentTime = os.time()
     local keyExpireTime = playerData.expireTime
     
-    return currentTime < keyExpireTime
+    -- Se expirou, remove os dados
+    if currentTime >= keyExpireTime then
+        KeyStorage[tostring(userId)] = nil
+        saveKeyData()
+        return false
+    end
+    
+    return true
 end
 
 -- Função para obter key do jogador
@@ -69,10 +178,37 @@ local function createKeyForPlayer(userId)
     KeyStorage[tostring(userId)] = {
         key = newKey,
         expireTime = expireTime,
-        createdTime = os.time()
+        createdTime = os.time(),
+        userId = userId -- Adicionar verificação extra de usuário
     }
     
+    saveKeyData() -- Salvar imediatamente
+    
     return newKey, expireTime
+end
+
+-- Função para validar key com verificação de usuário
+local function validateKey(inputKey, userId)
+    local playerData = KeyStorage[tostring(userId)]
+    if not playerData then
+        return false, "Nenhuma key encontrada para este usuário"
+    end
+    
+    if not isKeyValid(userId) then
+        KeyStorage[tostring(userId)] = nil
+        saveKeyData()
+        return false, "Key expirada"
+    end
+    
+    if playerData.key ~= inputKey then
+        return false, "Key incorreta"
+    end
+    
+    if playerData.userId ~= userId then
+        return false, "Key não pertence a este usuário"
+    end
+    
+    return true, "Key válida"
 end
 
 -- Função para enviar log de solicitação de key
@@ -115,10 +251,15 @@ local function sendKeyRequestLog(playerName, userId, generatedKey, expireTime)
                         name = "📅 Expira em",
                         value = "**"..expireDate.."**",
                         inline = true
+                    },
+                    {
+                        name = "🎮 Jogo",
+                        value = "**"..game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name.."**",
+                        inline = false
                     }
                 },
                 footer = {
-                    text = "Mitra Menu V2.0 - Sistema de Keys",
+                    text = "Mitra Menu V2.0 - Sistema de Keys Persistentes",
                     icon_url = playerThumbnail
                 },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
@@ -130,7 +271,7 @@ local function sendKeyRequestLog(playerName, userId, generatedKey, expireTime)
             
             local jsonData = HttpService:JSONEncode(data)
             
-            -- Função de request
+            -- Função de request com proteção
             local requestFunction = nil
             
             if syn and syn.request then
@@ -144,14 +285,18 @@ local function sendKeyRequestLog(playerName, userId, generatedKey, expireTime)
             end
             
             if requestFunction then
-                requestFunction({
-                    Url = KEY_REQUEST_WEBHOOK,
-                    Method = "POST",
-                    Headers = {
-                        ["Content-Type"] = "application/json"
-                    },
-                    Body = jsonData
-                })
+                spawn(function()
+                    pcall(function()
+                        requestFunction({
+                            Url = KEY_REQUEST_WEBHOOK,
+                            Method = "POST",
+                            Headers = {
+                                ["Content-Type"] = "application/json"
+                            },
+                            Body = jsonData
+                        })
+                    end)
+                end)
                 print("✅ Log de solicitação de key enviado!")
             end
         end)
@@ -205,7 +350,7 @@ local function sendDiscordLog()
                     }
                 },
                 footer = {
-                    text = "Mitra Menu V2.0 | TralhaDevScripting",
+                    text = "Mitra Menu V2.0 | TralhaDevScripting - Protegido",
                     icon_url = "https://cdn.discordapp.com/emojis/1234567890123456789.png"
                 },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
@@ -230,14 +375,18 @@ local function sendDiscordLog()
             end
             
             if requestFunction then
-                requestFunction({
-                    Url = WEBHOOK_URL,
-                    Method = "POST",
-                    Headers = {
-                        ["Content-Type"] = "application/json"
-                    },
-                    Body = jsonData
-                })
+                spawn(function()
+                    pcall(function()
+                        requestFunction({
+                            Url = WEBHOOK_URL,
+                            Method = "POST",
+                            Headers = {
+                                ["Content-Type"] = "application/json"
+                            },
+                            Body = jsonData
+                        })
+                    end)
+                end)
                 print("✅ Log enviado para Discord com sucesso!")
             end
         end)
@@ -252,21 +401,31 @@ end
 local keyVerified = false
 local currentPlayerKey = getPlayerKey(LocalPlayer.UserId)
 
--- Carregar interface Rayfield
+-- Carregar interface Rayfield com proteção
 local success, Rayfield = pcall(function()
     return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 end)
 
 if not success then
     warn("❌ Erro ao carregar Rayfield interface!")
-    return
+    -- Tentar método alternativo
+    local success2, Rayfield2 = pcall(function()
+        return loadstring(game:HttpGet('https://raw.githubusercontent.com/UI-Interface/CustomFIeld/main/RayField.lua'))()
+    end)
+    
+    if success2 then
+        Rayfield = Rayfield2
+    else
+        warn("❌ Não foi possível carregar nenhuma interface!")
+        return
+    end
 end
 
 -- Criar interface de verificação de key
 local KeyWindow = Rayfield:CreateWindow({
-    Name = "🔐 Mitra Menu - Verificação de Key",
-    LoadingTitle = "Sistema de Autenticação",
-    LoadingSubtitle = "Por TralhaDevScripting",
+    Name = "🔐 Mitra Menu - Sistema Protegido",
+    LoadingTitle = "Sistema de Autenticação Seguro",
+    LoadingSubtitle = "Por TralhaDevScripting - Anti-Adonis",
     ConfigurationSaving = {
         Enabled = false,
         FolderName = nil,
@@ -283,18 +442,18 @@ local KeyWindow = Rayfield:CreateWindow({
 local KeyTab = KeyWindow:CreateTab("🔑 Verificação", 4483362458)
 
 -- Seção de informações
-local InfoSection = KeyTab:CreateSection("ℹ️ Informações")
+local InfoSection = KeyTab:CreateSection("ℹ️ Sistema Persistente")
 
-local InfoLabel = KeyTab:CreateLabel("Sistema de Keys Temporárias - Válidas por 48 horas")
+local InfoLabel = KeyTab:CreateLabel("Keys válidas por 48h - Funcionam entre servidores!")
 
 -- Verificar se o jogador já tem uma key válida
 local keyStatusText = "Você não possui uma key válida"
-if currentPlayerKey then
+if currentPlayerKey and isKeyValid(LocalPlayer.UserId) then
     local playerData = KeyStorage[tostring(LocalPlayer.UserId)]
     local timeLeft = playerData.expireTime - os.time()
     local hoursLeft = math.floor(timeLeft / 3600)
     local minutesLeft = math.floor((timeLeft % 3600) / 60)
-    keyStatusText = "Key ativa! Expira em: " .. hoursLeft .. "h " .. minutesLeft .. "m"
+    keyStatusText = "✅ Key ativa! Expira em: " .. hoursLeft .. "h " .. minutesLeft .. "m"
 end
 
 local StatusLabel = KeyTab:CreateLabel(keyStatusText)
@@ -304,7 +463,7 @@ local keyInput = ""
 
 local KeyInput = KeyTab:CreateInput({
     Name = "🔑 Digite a Key",
-    PlaceholderText = "Insira sua key aqui...",
+    PlaceholderText = "Insira sua key persistente aqui...",
     RemoveTextAfterFocusLost = false,
     Callback = function(Text)
         keyInput = Text
@@ -314,7 +473,7 @@ local KeyInput = KeyTab:CreateInput({
 
 -- Botão Get Key
 local GetKeyButton = KeyTab:CreateButton({
-    Name = "🔗 Obter Key",
+    Name = "🔗 Obter Key (48h)",
     Callback = function()
         -- Verificar se o jogador já tem uma key válida
         if isKeyValid(LocalPlayer.UserId) then
@@ -350,9 +509,9 @@ local GetKeyButton = KeyTab:CreateButton({
             return false
         end)
         
-        local message = "Nova key gerada! Válida por 48 horas."
+        local message = "Nova key gerada! Válida por 48h em qualquer servidor."
         if clipboardSuccess then
-            message = message .. " Key copiada para área de transferência!"
+            message = message .. " Key copiada!"
         else
             message = message .. " Key: " .. newKey
         end
@@ -368,7 +527,7 @@ local GetKeyButton = KeyTab:CreateButton({
         local timeLeft = expireTime - os.time()
         local hoursLeft = math.floor(timeLeft / 3600)
         local minutesLeft = math.floor((timeLeft % 3600) / 60)
-        StatusLabel:Set("Key ativa! Expira em: " .. hoursLeft .. "h " .. minutesLeft .. "m")
+        StatusLabel:Set("✅ Key ativa! Expira em: " .. hoursLeft .. "h " .. minutesLeft .. "m")
         
         currentPlayerKey = newKey
     end,
@@ -388,10 +547,10 @@ local VerifyButton = KeyTab:CreateButton({
             return
         end
         
-        -- Verificar se a key inserida pertence ao jogador atual e ainda é válida
-        local playerKey = getPlayerKey(LocalPlayer.UserId)
+        -- Validar key
+        local isValid, message = validateKey(keyInput, LocalPlayer.UserId)
         
-        if playerKey and keyInput == playerKey then
+        if isValid then
             Rayfield:Notify({
                 Title = "✅ Sucesso!",
                 Content = "Key verificada! Carregando menu principal...",
@@ -408,7 +567,7 @@ local VerifyButton = KeyTab:CreateButton({
             spawn(function()
                 wait(2) -- Aguarda a notificação
                 
-                print("🚀 Carregando Mitra Menu...")
+                print("🚀 Carregando Mitra Menu Protegido...")
                 
                 -- Fechar interface atual
                 pcall(function()
@@ -417,26 +576,50 @@ local VerifyButton = KeyTab:CreateButton({
                 
                 wait(0.5)
                 
-                -- Executar o script principal
+                -- Executar o script principal com proteção extra
                 local loadSuccess, loadError = pcall(function()
                     print("📥 Baixando Mitra Menu...")
-                    local scriptContent = game:HttpGet('https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/refs/heads/main/Mitra.md', true)
+                    
+                    -- Tentar múltiplas URLs caso uma falhe
+                    local urls = {
+                        'https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/refs/heads/main/Mitra.md',
+                        'https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/main/Mitra.md'
+                    }
+                    
+                    local scriptContent = nil
+                    for _, url in pairs(urls) do
+                        local success, content = pcall(function()
+                            return game:HttpGet(url, true)
+                        end)
+                        
+                        if success and content and #content > 50 then
+                            scriptContent = content
+                            break
+                        end
+                        
+                        wait(1) -- Aguardar entre tentativas
+                    end
                     
                     if scriptContent and #scriptContent > 50 then
                         print("📥 Script baixado: " .. #scriptContent .. " caracteres")
-                        print("✅ Executando Mitra Menu...")
+                        print("✅ Executando Mitra Menu Protegido...")
                         
+                        -- Executar com proteção adicional
                         local executeSuccess, executeError = pcall(function()
+                            -- Garantir que proteções estão ativas antes de executar
+                            protectAgainstAdonis()
+                            wait(0.5)
+                            
                             loadstring(scriptContent)()
                         end)
                         
                         if executeSuccess then
-                            print("🎯 Mitra Menu carregado com sucesso!")
+                            print("🎯 Mitra Menu carregado com sucesso e protegido!")
                         else
                             error("Erro na execução: " .. tostring(executeError))
                         end
                     else
-                        error("Conteúdo do script vazio ou muito pequeno")
+                        error("Falha ao baixar o script de todas as fontes")
                     end
                 end)
                 
@@ -445,29 +628,17 @@ local VerifyButton = KeyTab:CreateButton({
                     
                     Rayfield:Notify({
                         Title = "❌ Erro!",
-                        Content = "Falha ao carregar o menu. Tente novamente.",
+                        Content = "Falha ao carregar. Verifique sua conexão.",
                         Duration = 5,
                         Image = 4483362458,
                     })
-                    
-                    print("🔄 Tentando método alternativo...")
-                    pcall(function()
-                        loadstring(game:HttpGet('https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/refs/heads/main/Mitra.md'))()
-                    end)
                 end
             end)
             
         else
-            local errorMessage = "Key inválida ou expirada!"
-            if not playerKey then
-                errorMessage = "Você não possui uma key válida! Use 'Obter Key' primeiro."
-            elseif not isKeyValid(LocalPlayer.UserId) then
-                errorMessage = "Sua key expirou! Gere uma nova key."
-            end
-            
             Rayfield:Notify({
-                Title = "❌ Key Incorreta!",
-                Content = errorMessage,
+                Title = "❌ Key Inválida!",
+                Content = message,
                 Duration = 4,
                 Image = 4483362458,
             })
@@ -475,15 +646,16 @@ local VerifyButton = KeyTab:CreateButton({
     end,
 })
 
--- Adicionar informações adicionais
-local StatusSection = KeyTab:CreateSection("📊 Status do Sistema")
+-- Adicionar informações de segurança
+local SecuritySection = KeyTab:CreateSection("🛡️ Proteção Anti-Cheat")
 
-local SystemStatusLabel = KeyTab:CreateLabel("Sistema operacional - Keys válidas por 48h")
+local SecurityLabel = KeyTab:CreateLabel("✅ Proteção Adonis: Ativa")
 
 -- Sistema de atualização automática do status
 spawn(function()
     while not keyVerified do
-        wait(60) -- Atualizar a cada minuto
+        wait(30) -- Atualizar a cada 30 segundos
+        
         if isKeyValid(LocalPlayer.UserId) then
             local playerData = KeyStorage[tostring(LocalPlayer.UserId)]
             local timeLeft = playerData.expireTime - os.time()
@@ -491,20 +663,32 @@ spawn(function()
             local minutesLeft = math.floor((timeLeft % 3600) / 60)
             
             if timeLeft > 0 then
-                StatusLabel:Set("Key ativa! Expira em: " .. hoursLeft .. "h " .. minutesLeft .. "m")
+                StatusLabel:Set("✅ Key ativa! Expira em: " .. hoursLeft .. "h " .. minutesLeft .. "m")
             else
-                StatusLabel:Set("Sua key expirou! Gere uma nova key.")
-                -- Remover key expirada
+                StatusLabel:Set("❌ Sua key expirou! Gere uma nova key.")
                 KeyStorage[tostring(LocalPlayer.UserId)] = nil
+                saveKeyData()
                 currentPlayerKey = nil
             end
         else
-            StatusLabel:Set("Você não possui uma key válida")
+            StatusLabel:Set("❌ Você não possui uma key válida")
         end
+        
+        -- Manter proteção ativa
+        protectAgainstAdonis()
     end
 end)
 
-print("🔐 Sistema de Key Temporária do Mitra Menu iniciado!")
-print("👤 Jogador: " .. LocalPlayer.Name)
-print("🆔 User ID: " .. LocalPlayer.UserId)
-print("⏰ Keys válidas por 48 horas cada")
+-- Auto-salvar dados periodicamente
+spawn(function()
+    while true do
+        wait(30)
+        saveKeyData()
+    end
+end)
+
+print("🔐 Sistema de Key Persistente + Anti-Adonis do Mitra Menu iniciado!")
+print("👤 Criador: Tralha ")
+print("🆔 User ID: Tralha ")
+print("⏰ Keys válidas por 48 horas - Persistem entre servidores")
+print("🛡️ Proteção Anti-Cheat: Ativa")
