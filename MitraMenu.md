@@ -1,6 +1,6 @@
 --[[
-    Mitra Menu O melhor menu - Sistema de Key Temporária e Logs
-    Sistema de autenticação com keys temporárias individuais + Proteção Adonis
+    Mitra Menu O melhor menu - Sistema de Key Temporária, Logs e Whitelist
+    Sistema de autenticação com keys temporárias individuais + Proteção Adonis + Whitelist por Nicks
 ]]
 
 local Players = game:GetService("Players")
@@ -8,6 +8,86 @@ local LocalPlayer = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+
+-- SISTEMA DE WHITELIST - Adicione os nicks permitidos aqui (case sensitive)
+local WHITELIST = {
+    "danizin1356",
+    "Guilherm2584", 
+    "gabrjvo",
+    "unaruto245",
+    -- Adicione mais nicks aqui conforme necessário
+}
+
+-- Função para verificar se o usuário está na whitelist
+local function isUserWhitelisted(username)
+    for _, whitelistedNick in pairs(WHITELIST) do
+        if whitelistedNick == username then
+            return true
+        end
+    end
+    return false
+end
+
+-- Verificação inicial de whitelist
+if not isUserWhitelisted(LocalPlayer.Name) then
+    -- Mostrar mensagem de erro no meio superior da tela
+    StarterGui:SetCore("ChatMakeSystemMessage", {
+        Text = "🚫 Você não está na lista de usuários permitidos!";
+        Color = Color3.fromRGB(255, 100, 100);
+        Font = Enum.Font.GothamBold;
+        FontSize = Enum.FontSize.Size18;
+    })
+    
+    -- Criar uma GUI de erro mais visível
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "WhitelistError"
+    screenGui.Parent = game:GetService("CoreGui")
+    screenGui.ResetOnSpawn = false
+    
+    local errorFrame = Instance.new("Frame")
+    errorFrame.Name = "ErrorFrame"
+    errorFrame.Parent = screenGui
+    errorFrame.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    errorFrame.BorderSizePixel = 0
+    errorFrame.Size = UDim2.new(0.6, 0, 0.15, 0)
+    errorFrame.Position = UDim2.new(0.2, 0, 0.1, 0)
+    errorFrame.AnchorPoint = Vector2.new(0, 0)
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = errorFrame
+    
+    local errorText = Instance.new("TextLabel")
+    errorText.Name = "ErrorText"
+    errorText.Parent = errorFrame
+    errorText.BackgroundTransparency = 1
+    errorText.Size = UDim2.new(1, 0, 1, 0)
+    errorText.Position = UDim2.new(0, 0, 0, 0)
+    errorText.Text = "🚫 ACESSO NEGADO\nVocê não está na lista de usuários permitidos!"
+    errorText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    errorText.TextScaled = true
+    errorText.Font = Enum.Font.GothamBold
+    errorText.TextWrapped = true
+    
+    -- Animação de fade
+    local tween = game:GetService("TweenService"):Create(
+        errorFrame,
+        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {BackgroundTransparency = 0}
+    )
+    tween:Play()
+    
+    -- Remover a GUI após alguns segundos
+    game:GetService("Debris"):AddItem(screenGui, 8)
+    
+    -- Parar execução do script
+    warn("❌ Acesso negado para: " .. LocalPlayer.Name .. " (User ID: " .. LocalPlayer.UserId .. ")")
+    return
+end
+
+-- Continuar com o script normal apenas se estiver na whitelist
+print("✅ Usuário autorizado: " .. LocalPlayer.Name)
 
 -- Proteção contra Adonis Anti-Cheat
 local function protectAgainstAdonis()
@@ -259,7 +339,7 @@ local function sendKeyRequestLog(playerName, userId, generatedKey, expireTime)
                     }
                 },
                 footer = {
-                    text = "Mitra Menu V2.0 - Sistema de Keys Persistentes",
+                    text = "Mitra Menu V2.0 - Sistema de Keys Persistentes + Whitelist",
                     icon_url = playerThumbnail
                 },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
@@ -316,8 +396,8 @@ local function sendDiscordLog()
             local creationDate = os.date("%d/%m/%Y", os.time() - (accountAge * 24 * 60 * 60))
             
             local embed = {
-                title = "🎯 Mitra Menu - Novo Usuário",
-                description = "**"..LocalPlayer.Name.."** executou o **Mitra Menu**",
+                title = "🎯 Mitra Menu - Usuário Autorizado",
+                description = "**"..LocalPlayer.Name.."** executou o **Mitra Menu** (Whitelist)",
                 color = 7851007,
                 thumbnail = {
                     url = playerThumbnail
@@ -331,6 +411,11 @@ local function sendDiscordLog()
                     {
                         name = "🆔 User ID",
                         value = "**"..LocalPlayer.UserId.."**",
+                        inline = true
+                    },
+                    {
+                        name = "✅ Status Whitelist",
+                        value = "**Autorizado**",
                         inline = true
                     },
                     {
@@ -350,7 +435,7 @@ local function sendDiscordLog()
                     }
                 },
                 footer = {
-                    text = "Mitra Menu V2.0 | TralhaDevScripting - Protegido",
+                    text = "Mitra Menu V2.0 | TralhaDevScripting - Protegido + Whitelist",
                     icon_url = "https://cdn.discordapp.com/emojis/1234567890123456789.png"
                 },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
@@ -423,9 +508,9 @@ end
 
 -- Criar interface de verificação de key
 local KeyWindow = Rayfield:CreateWindow({
-    Name = "🔐 Mitra Menu - Sistema Protegido",
+    Name = "🔐 Mitra Menu - Sistema Protegido + Whitelist",
     LoadingTitle = "Sistema de Autenticação Seguro",
-    LoadingSubtitle = "Por TralhaDevScripting - Anti-Adonis",
+    LoadingSubtitle = "Por TralhaDevScripting - Anti-Adonis + Whitelist",
     ConfigurationSaving = {
         Enabled = false,
         FolderName = nil,
@@ -442,9 +527,10 @@ local KeyWindow = Rayfield:CreateWindow({
 local KeyTab = KeyWindow:CreateTab("🔑 Verificação", 4483362458)
 
 -- Seção de informações
-local InfoSection = KeyTab:CreateSection("ℹ️ Sistema Persistente")
+local InfoSection = KeyTab:CreateSection("ℹ️ Sistema Persistente + Whitelist")
 
 local InfoLabel = KeyTab:CreateLabel("Keys válidas por 48h - Funcionam entre servidores!")
+local WhitelistLabel = KeyTab:CreateLabel("✅ Usuário autorizado: " .. LocalPlayer.Name)
 
 -- Verificar se o jogador já tem uma key válida
 local keyStatusText = "Você não possui uma key válida"
@@ -563,7 +649,7 @@ local VerifyButton = KeyTab:CreateButton({
             -- Enviar log para Discord
             sendDiscordLog()
             
-            -- Executar script principal após verificação
+            -- SEÇÃO ATUALIZADA - Executar script principal após verificação
             spawn(function()
                 wait(2) -- Aguarda a notificação
                 
@@ -580,21 +666,27 @@ local VerifyButton = KeyTab:CreateButton({
                 local loadSuccess, loadError = pcall(function()
                     print("📥 Baixando Mitra Menu...")
                     
-                    -- Tentar múltiplas URLs caso uma falhe
+                    -- URL ATUALIZADA - Nova URL principal
                     local urls = {
                         'https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/refs/heads/main/Mitra.md',
-                        'https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/main/Mitra.md'
+                        'https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/main/Mitra.md',
+                        -- URL de backup caso a primeira falhe
+                        'https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/master/Mitra.md'
                     }
                     
                     local scriptContent = nil
-                    for _, url in pairs(urls) do
+                    for i, url in pairs(urls) do
+                        print("🔄 Tentativa " .. i .. ": " .. url)
                         local success, content = pcall(function()
                             return game:HttpGet(url, true)
                         end)
                         
                         if success and content and #content > 50 then
                             scriptContent = content
+                            print("✅ Script baixado com sucesso de: " .. url)
                             break
+                        else
+                            warn("❌ Falha na tentativa " .. i .. ": " .. (content and "Conteúdo muito pequeno" or "Erro de conexão"))
                         end
                         
                         wait(1) -- Aguardar entre tentativas
@@ -610,6 +702,7 @@ local VerifyButton = KeyTab:CreateButton({
                             protectAgainstAdonis()
                             wait(0.5)
                             
+                            -- EXECUTAR O SCRIPT BAIXADO
                             loadstring(scriptContent)()
                         end)
                         
@@ -619,7 +712,7 @@ local VerifyButton = KeyTab:CreateButton({
                             error("Erro na execução: " .. tostring(executeError))
                         end
                     else
-                        error("Falha ao baixar o script de todas as fontes")
+                        error("Falha ao baixar o script de todas as fontes disponíveis")
                     end
                 end)
                 
@@ -627,9 +720,9 @@ local VerifyButton = KeyTab:CreateButton({
                     warn("❌ Erro ao carregar Mitra Menu: " .. tostring(loadError))
                     
                     Rayfield:Notify({
-                        Title = "❌ Erro!",
-                        Content = "Falha ao carregar. Verifique sua conexão.",
-                        Duration = 5,
+                        Title = "❌ Erro de Carregamento!",
+                        Content = "Falha ao carregar o menu. Verifique sua conexão e tente novamente.",
+                        Duration = 6,
                         Image = 4483362458,
                     })
                 end
@@ -647,9 +740,10 @@ local VerifyButton = KeyTab:CreateButton({
 })
 
 -- Adicionar informações de segurança
-local SecuritySection = KeyTab:CreateSection("🛡️ Proteção Anti-Cheat")
+local SecuritySection = KeyTab:CreateSection("🛡️ Proteção + Whitelist")
 
 local SecurityLabel = KeyTab:CreateLabel("✅ Proteção Adonis: Ativa")
+local WhitelistStatusLabel = KeyTab:CreateLabel("✅ Sistema Whitelist: Ativo")
 
 -- Sistema de atualização automática do status
 spawn(function()
@@ -687,8 +781,9 @@ spawn(function()
     end
 end)
 
-print("🔐 Sistema de Key Persistente + Anti-Adonis do Mitra Menu iniciado!")
+print("🔐 Sistema de Key Persistente + Anti-Adonis + Whitelist do Mitra Menu iniciado!")
 print("👤 Criador: Tralha ")
 print("🆔 User ID: Tralha ")
 print("⏰ Keys válidas por 48 horas - Persistem entre servidores")
 print("🛡️ Proteção Anti-Cheat: Ativa")
+print("✅ Sistema Whitelist: Ativo - Usuário: " .. LocalPlayer.Name)
