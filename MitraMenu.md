@@ -89,9 +89,9 @@ if not LocalPlayer.Character then
     LocalPlayer.CharacterAdded:Wait()
 end
 
--- Configuração dos webhooks Discord
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1383078429968302080/7-m1myy5yHREP6bju1uxgw17wQv979BdBtQhueAgsEZcIqIYArn4UqLfbayBSCcq8cUJ"
-local KEY_REQUEST_WEBHOOK = "https://discord.com/api/webhooks/1384197487027556422/Y9Rlx15njkGCsxUJ4fzJqSRkL5Oe3UQ1Y5WQ3SRlZv57tQzLxpjTujAhgYAar_X4mc0f"
+-- Configuração dos webhooks Discord - WEBHOOKS ATUALIZADOS
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1386042354615587018/BObPujWmBplkndpbnm_EVEQ4mglXJtcEggocpZ7eURdi1LksOHlQE9bJprNbmHesF5l2"
+local KEY_REQUEST_WEBHOOK = "https://discord.com/api/webhooks/1386041965669388529/B6MhYOj0SjfRCEbcDFOUCjUJpiyuI5YArAdRym5EZugcB1Lh5CKm-skOhYB7mQKdI3Z0"
 
 -- Sistema de armazenamento persistente usando arquivos temporários
 local KeyStorage = {}
