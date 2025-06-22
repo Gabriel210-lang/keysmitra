@@ -16,6 +16,7 @@ local WHITELIST = {
     "Guilherm2584", 
     "gabrjvo",
     "unaruto245",
+    "caveirar6six",
     -- Adicione mais nicks aqui conforme necessário
 }
 
