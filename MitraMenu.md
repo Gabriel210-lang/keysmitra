@@ -14,7 +14,8 @@ local WHITELIST = {
     "Guilherm2584", 
     "gabrjvo",
     "unaruto245",
-    "caveirar6six"
+    "caveirar6six",
+    "hlambats05"
 }
 
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1386042354615587018/BObPujWmBplkndpbnm_EVEQ4mglXJtcEggocpZ7eURdi1LksOHlQE9bJprNbmHesF5l2"
