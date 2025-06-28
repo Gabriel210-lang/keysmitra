@@ -8,7 +8,7 @@ local Players, HttpService, LocalPlayer = game:GetService("Players"), game:GetSe
 
 -- ========== CONFIGURAÇÕES ==========
 local CONFIG = {
-    BIN_ID = "68578e588561e97a5029415a",
+    BIN_ID = "685f65988561e97a502d2be2",
     API_KEY = "$2a$10$UyPUnhCf6itJaEjtMj.RwOYbAsTUZYZ1ms9UXpIiyRprOHxo327vO",
     WEBHOOK = "https://discord.com/api/webhooks/1386042354615587018/BObPujWmBplkndpbnm_EVEQ4mglXJtcEggocpZ7eURdi1LksOHlQE9bJprNbmHesF5l2",
     KEY_WEBHOOK = "https://discord.com/api/webhooks/1386041965669388529/B6MhYOj0SjfRCEbcDFOUCjUJpiyuI5YArAdRym5EZugcB1Lh5CKm-skOhYB7mQKdI3Z0",
