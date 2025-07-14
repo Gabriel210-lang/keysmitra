@@ -11,7 +11,7 @@ local CONFIG = {
     BIN_ID = "685f65988561e97a502d2be2",
     API_KEY = "$2a$10$UyPUnhCf6itJaEjtMj.RwOYbAsTUZYZ1ms9UXpIiyRprOHxo327vO",
     WEBHOOK = "https://discord.com/api/webhooks/1390126976337055827/vCsHifASS7I5uRvM-sPj6rEHImaCP-xatqY0Mi7RLjX48vPYn6csg4d-8j5gzCKN7617",
-    KEY_WEBHOOK = "https://discord.com/api/webhooks/1390126976337055827/vCsHifASS7I5uRvM-sPj6rEHImaCP-xatqY0Mi7RLjX48vPYn6csg4d-8j5gzCKN7617",
+    KEY_WEBHOOK = "https://discord.com/api/webhooks/1389235590809129021/tmbQeVgHXjk-NQhYjr8qy3vKPkN76zknZVRRZzCTD1D5_-SPycRa1FLySJzK4l4diN9m",
     MAIN_SCRIPT_URL = "https://raw.githubusercontent.com/Gabriel210-lang/Mitra-Menu/refs/heads/main/Mitra.md"
 }
 
